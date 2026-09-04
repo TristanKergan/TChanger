@@ -17,10 +17,10 @@ import Json;
 export namespace config {
 
 struct ChangerConfig {
-    int ctKnifeIndex = 0;          // kKnives[] index (CT)
-    int tKnifeIndex = 0;           // kKnives[] index (T)
-    std::uint32_t ctAgentDef = 5602;  // econ item def index (CT) -> Agents[] lookup
-    std::uint32_t tAgentDef = 5602;   // econ item def index (T)  -> Agents[] lookup
+    std::uint32_t ctKnifeDef = 0;      // knife def index (CT) -> Knives[] lookup
+    std::uint32_t tKnifeDef = 0;       // knife def index (T)  -> Knives[] lookup
+    std::uint32_t ctAgentDef = 5602;   // econ item def index (CT) -> Agents[] lookup
+    std::uint32_t tAgentDef = 5602;    // econ item def index (T)  -> Agents[] lookup
 };
 
 class ConfigStore {
@@ -37,7 +37,7 @@ public:
     bool isKnifeEnabled() const {
         const json::Value* settings = root_.Find("settings");
         if (!settings) return false;
-        return settings->Find("knife_ct_index") || settings->Find("knife_t_index");
+        return settings->Find("knife_ct_def") || settings->Find("knife_t_def");
     }
     bool isAgentEnabled() const {
         const json::Value* settings = root_.Find("settings");
@@ -124,8 +124,8 @@ config::ChangerConfig& config::Global() {
             log.info("config: no 'settings' section, using defaults");
             return c;
         }
-        c.ctKnifeIndex = static_cast<int>(json::GetLong(*settings, "knife_ct_index", c.ctKnifeIndex));
-        c.tKnifeIndex  = static_cast<int>(json::GetLong(*settings, "knife_t_index", c.tKnifeIndex));
+        c.ctKnifeDef = static_cast<std::uint32_t>(json::GetLong(*settings, "knife_ct_def", c.ctKnifeDef));
+        c.tKnifeDef  = static_cast<std::uint32_t>(json::GetLong(*settings, "knife_t_def", c.tKnifeDef));
         c.ctAgentDef = static_cast<std::uint32_t>(json::GetLong(*settings, "agent_ct_def", c.ctAgentDef));
         c.tAgentDef  = static_cast<std::uint32_t>(json::GetLong(*settings, "agent_t_def", c.tAgentDef));
         return c;
