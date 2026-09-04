@@ -34,33 +34,33 @@ constexpr std::int32_t kQuality = 3;
 constexpr int kMaxWeapons = 64;
 
 struct KnifeModel {
+    std::uint16_t defIndex;
     const char* modelPath;
     std::uint32_t subclassId;
-    std::uint16_t defIndex;
 };
 
-// Legacy knife table: render model path, entity subclass id, econ def index.
+// Legacy knife table: econ def index, render model path, entity subclass id.
 const KnifeModel Knives[] = {
-    {"weapons/models/knife/knife_bayonet/weapon_knife_bayonet.vmdl", 3933374535u, 500},
-    {"weapons/models/knife/knife_css/weapon_knife_css.vmdl", 3787235507u, 503},
-    {"weapons/models/knife/knife_flip/weapon_knife_flip.vmdl", 4046390180u, 505},
-    {"weapons/models/knife/knife_gut/weapon_knife_gut.vmdl", 2047704618u, 506},
-    {"weapons/models/knife/knife_karambit/weapon_knife_karambit.vmdl", 1731408398u, 507},
-    {"weapons/models/knife/knife_m9/weapon_knife_m9.vmdl", 1638561588u, 508},
-    {"weapons/models/knife/knife_tactical/weapon_knife_tactical.vmdl", 2282479884u, 509},
-    {"weapons/models/knife/knife_falchion/weapon_knife_falchion.vmdl", 3412259219u, 512},
-    {"weapons/models/knife/knife_bowie/weapon_knife_bowie.vmdl", 2511498851u, 514},
-    {"weapons/models/knife/knife_butterfly/weapon_knife_butterfly.vmdl", 1353709123u, 515},
-    {"weapons/models/knife/knife_push/weapon_knife_push.vmdl", 4269888884u, 516},
-    {"weapons/models/knife/knife_cord/weapon_knife_cord.vmdl", 1105782941u, 517},
-    {"weapons/models/knife/knife_canis/weapon_knife_canis.vmdl", 275962944u, 518},
-    {"weapons/models/knife/knife_ursus/weapon_knife_ursus.vmdl", 1338637359u, 519},
-    {"weapons/models/knife/knife_outdoor/weapon_knife_outdoor.vmdl", 3206681373u, 521},
-    {"weapons/models/knife/knife_navaja/weapon_knife_navaja.vmdl", 3230445913u, 520},
-    {"weapons/models/knife/knife_stiletto/weapon_knife_stiletto.vmdl", 2595277776u, 522},
-    {"weapons/models/knife/knife_talon/weapon_knife_talon.vmdl", 4029975521u, 523},
-    {"weapons/models/knife/knife_skeleton/weapon_knife_skeleton.vmdl", 365028728u, 525},
-    {"weapons/models/knife/knife_kukri/weapon_knife_kukri.vmdl", 3845286452u, 526},
+    {500, "weapons/models/knife/knife_bayonet/weapon_knife_bayonet.vmdl", 3933374535u},
+    {503, "weapons/models/knife/knife_css/weapon_knife_css.vmdl", 3787235507u},
+    {505, "weapons/models/knife/knife_flip/weapon_knife_flip.vmdl", 4046390180u},
+    {506, "weapons/models/knife/knife_gut/weapon_knife_gut.vmdl", 2047704618u},
+    {507, "weapons/models/knife/knife_karambit/weapon_knife_karambit.vmdl", 1731408398u},
+    {508, "weapons/models/knife/knife_m9/weapon_knife_m9.vmdl", 1638561588u},
+    {509, "weapons/models/knife/knife_tactical/weapon_knife_tactical.vmdl", 2282479884u},
+    {512, "weapons/models/knife/knife_falchion/weapon_knife_falchion.vmdl", 3412259219u},
+    {514, "weapons/models/knife/knife_bowie/weapon_knife_bowie.vmdl", 2511498851u},
+    {515, "weapons/models/knife/knife_butterfly/weapon_knife_butterfly.vmdl", 1353709123u},
+    {516, "weapons/models/knife/knife_push/weapon_knife_push.vmdl", 4269888884u},
+    {517, "weapons/models/knife/knife_cord/weapon_knife_cord.vmdl", 1105782941u},
+    {518, "weapons/models/knife/knife_canis/weapon_knife_canis.vmdl", 275962944u},
+    {519, "weapons/models/knife/knife_ursus/weapon_knife_ursus.vmdl", 1338637359u},
+    {521, "weapons/models/knife/knife_outdoor/weapon_knife_outdoor.vmdl", 3206681373u},
+    {520, "weapons/models/knife/knife_navaja/weapon_knife_navaja.vmdl", 3230445913u},
+    {522, "weapons/models/knife/knife_stiletto/weapon_knife_stiletto.vmdl", 2595277776u},
+    {523, "weapons/models/knife/knife_talon/weapon_knife_talon.vmdl", 4029975521u},
+    {525, "weapons/models/knife/knife_skeleton/weapon_knife_skeleton.vmdl", 365028728u},
+    {526, "weapons/models/knife/knife_kukri/weapon_knife_kukri.vmdl", 3845286452u},
 };
 constexpr int KnifeCount = sizeof(Knives) / sizeof(Knives[0]);
 
@@ -89,7 +89,7 @@ const char* weapon_name_from_index(int index) {
         case 28:  return "negev";
         case 29:  return "sawedoff";
         case 30:  return "tec9";
-        case 31:  return "taser";
+        case 31:  return "zeus";
         case 32:  return "p2000";
         case 33:  return "mp7";
         case 34:  return "mp9";
@@ -273,9 +273,11 @@ void SkinChanger::Run() {
         // Default knife (player's own): config'ten seçilen bıçağa model swap.
         if (config::ConfigStore::Instance().isKnifeEnabled() &&
             (defIndex == kDefaultKnifeDefIndex42 || defIndex == kDefaultKnifeDefIndex59)) {
-            const int knifeIdx = (team == 3) ? cfg.ctKnifeIndex : cfg.tKnifeIndex;
-            if (knifeIdx >= 0 && knifeIdx < KnifeCount) {
-                const KnifeModel& knife = Knives[knifeIdx];
+            const std::uint32_t targetDef = (team == 3) ? cfg.ctKnifeDef : cfg.tKnifeDef;
+            for (int k = 0; k < KnifeCount; ++k) {
+                if (Knives[k].defIndex != targetDef)
+                    continue;
+                const KnifeModel& knife = Knives[k];
                 if (defIndex != knife.defIndex && o.updateSubClassValid &&
                     !IsBadReadPtr(econView + so.item_quality_offset, sizeof(std::int32_t)) &&
                     !IsBadReadPtr(econView + so.account_id_offset, sizeof(std::int32_t)) &&
@@ -294,6 +296,7 @@ void SkinChanger::Run() {
                     pendingSetModelPtr_ = weapon;
                     pendingSetModelPath_ = knife.modelPath;
                 }
+                break;
             }
         }
 
