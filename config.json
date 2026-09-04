@@ -1,9 +1,7 @@
 {
   "settings": {
-    // "music_kit": 76,
-    // "medal": 6107,
-    "knife_ct_index": 5,
-    "knife_t_index": 4,
+    "knife_ct_def": 507,
+    "knife_t_def": 508,
     "agent_ct_def": 5601,
     "agent_t_def": 5206
   },
@@ -18,7 +16,7 @@
       "usp": { "paint_kit": 1065, "seed": 1, "wear": 0.000001 },
       "glock": { "paint_kit": 38, "seed": 34, "wear": 0.000001 },
       "p2000": { "paint_kit": 1181, "seed": 1, "wear": 0.000001 },
-      "p250": { "paint_kit": 551, "seed": 1, "wear": 0.000001 },
+      "p250": { "paint_kit": 162, "seed": 1, "wear": 0.000001 },
       "five_seven": { "paint_kit": 831, "seed": 904, "wear": 0.000001 },
       "dual_berettas": { "paint_kit": 710, "seed": 1, "wear": 0.000001 },
       "tec9": { "paint_kit": 733, "seed": 1, "wear": 0.000001 },
@@ -35,27 +33,25 @@
       "mag7": { "paint_kit": 171, "seed": 1, "wear": 0.000001 },
       "nova": { "paint_kit": 101, "seed": 1, "wear": 0.000001 },
       "m249": { "paint_kit": 75, "seed": 1, "wear": 0.000001 },
-      "taser": { "paint_kit": 1183, "seed": 1, "wear": 0.000001 }
+      "zeus": { "paint_kit": 1183, "seed": 1, "wear": 0.000001 },
+      "ak47": { "paint_kit": 1309, "seed": 1, "wear": 0.000001 },
     },
     "ct": {
-      "m4a4": { "paint_kit": 1063, "seed": 1, "wear": 0.000001 },
+      "m4a4": { "paint_kit": 101, "seed": 1, "wear": 0.000001 },
       "aug": { "paint_kit": 1033, "seed": 1, "wear": 0.000001 },
       "ssg08": { "paint_kit": 253, "seed": 1, "wear": 0.000001 },
       "negev": { "paint_kit": 285, "seed": 1, "wear": 0.000001 },
       "deagle": { "paint_kit": 185, "seed": 1, "wear": 0.000001 },
-      "ak47": { "paint_kit": 1309, "seed": 1, "wear": 0.000001 },
-      "awp": { "paint_kit": 838, "seed": 1, "wear": 0.000001 },
+      "awp": { "paint_kit": 1206, "seed": 1, "wear": 0.000001 },
       "sawedoff": { "paint_kit": 1014, "seed": 1, "wear": 0.000001 },
       "knife": { "paint_kit": 417, "seed": 609, "wear": 0.000001 }
     },
     "t": {
-      "m4a4": { "paint_kit": 101, "seed": 1, "wear": 0.000001 },
       "aug": { "paint_kit": 153, "seed": 1, "wear": 0.000001 },
       "ssg08": { "paint_kit": 762, "seed": 1, "wear": 0.000001 },
       "negev": { "paint_kit": 201, "seed": 1, "wear": 0.000001 },
       "deagle": { "paint_kit": 37, "seed": 1, "wear": 0.000001 },
-      "ak47": { "paint_kit": 302, "seed": 1, "wear": 0.000001 },
-      "awp": { "paint_kit": 344, "seed": 1, "wear": 0.000001 },
+      "awp": { "paint_kit": 1346, "seed": 1, "wear": 0.000001 },
       "sawedoff": { "paint_kit": 83, "seed": 1, "wear": 0.000001 },
       "knife": { "paint_kit": 246, "seed": 1, "wear": 0.000001 }
     }
