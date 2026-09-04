@@ -25,7 +25,33 @@ run **inject.sh**, This script masks **TracerPid** by loading the lkm module.
 
 ### How do I change skins?
 
-Move the **config.json** file to **$HOME/.config/Hamzex**
+Move the **config.json** file to **~/.config/Hamzex**
+
+example config:
+
+```
+{
+  "settings": {
+    // "music_kit": 76, comming soon
+    // "medal": 6107, comming soon
+    "knife_ct_def": 508,
+    "knife_t_def": 507,
+    "agent_ct_def": 5601,
+    "agent_t_def": 5206
+  },
+  "skins": { /* ak47, m4a4, m4a1, aug, awp, ssg08, sg553, deagle, knife, mag7, mp9, mp7, mp5, usp, p2000, famas, galilar, scar20, g3sg1, glock, p250, five_seven, dual_berettas, tec9, cz75a, revolver, p90, mac10, bizon, ump45, xm1014, nova, m249, zeus, negev, sawedoff */
+    "both": {
+      "ssg08": { "paint_kit": 253, "seed": 1, "wear": 0.000001 }
+    },
+    "ct": {
+      "m4a1": { "paint_kit": 1017, "seed": 1, "wear": 0.000001 }
+    },
+    "t": {
+      "knife": { "paint_kit": 246, "seed": 1, "wear": 0.000001 }
+    }
+  }
+}
+```
 
 ## TODO List
 
