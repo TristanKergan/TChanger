@@ -13,44 +13,95 @@ Linux only internal skin changer for **Counter-Strike 2**.
 - **Linux kernel headers** matching your running kernel (to build the `hide_tracer` kernel module)
 - **gdb** (used by `inject.sh` to attach to the game and `dlopen` the library)
 
-## Compiling
+## Step-by-step guide
+### building
 
-**build.sh** for main lib file
+```git clone https://gitlab.com/eneshamza/hamzex.git``` clone repo
 
-**build_lkm.sh** for kernel module
+```cd hamzex``` enter repo
 
-### Injecting into game process
+```./build_lkm.sh``` build kernel module for bypass TracerPid (optional)
 
-run **inject.sh**, This script masks **TracerPid** by loading the lkm module.
+```./build.sh``` build cheat
 
-### How do I change skins?
+```sudo ./inject.sh``` inject cheat to cs2 (With TrackerPid bypass)
 
-Move the **config.json** file to **~/.config/Hamzex**
+or
 
-example config:
+```sudo ./inject-direct.sh``` inject without bypass (I didn't experience any problems.)
+
+### Skin customization
+
+move ```config.json``` to ```~/.config/Hamzex/config.json```
+
+Find the skin you want on https://csgoskins.gg (or any source) and enter the number labeled "finish catalog" (found at the bottom left) into the "paint_kit" field.
+
+valid values:
 
 ```
-{
-  "settings": {
-    // "music_kit": 76, comming soon
-    // "medal": 6107, comming soon
-    "knife_ct_def": 508,
-    "knife_t_def": 507,
-    "agent_ct_def": 5601,
-    "agent_t_def": 5206
-  },
-  "skins": { /* ak47, m4a4, m4a1, aug, awp, ssg08, sg553, deagle, knife, mag7, mp9, mp7, mp5, usp, p2000, famas, galilar, scar20, g3sg1, glock, p250, five_seven, dual_berettas, tec9, cz75a, revolver, p90, mac10, bizon, ump45, xm1014, nova, m249, zeus, negev, sawedoff */
-    "both": {
-      "ssg08": { "paint_kit": 253, "seed": 1, "wear": 0.000001 }
-    },
-    "ct": {
-      "m4a1": { "paint_kit": 1017, "seed": 1, "wear": 0.000001 }
-    },
-    "t": {
-      "knife": { "paint_kit": 246, "seed": 1, "wear": 0.000001 }
-    }
-  }
-}
+* Knives *
+500 bayonet
+503 css
+505 flip
+506 gut
+507 karambit
+508 m9
+509 tactical
+512 falchion
+514 bowie
+515 butterfly
+516 push
+517 cord
+518 canis
+519 ursus
+521 outdoor
+520 navaja
+522 stiletto
+523 talon
+525 skeleton
+526 kukri
+
+* Agents *
+
+I didn't feel like it; I'll add it later.
+
+* Weapons *
+ak47
+m4a4
+m4a1
+aug
+awp
+ssg08
+sg553
+deagle
+knife
+mag7
+mp9
+mp7
+mp5
+usp
+p2000
+famas
+galilar
+scar20
+g3sg1
+glock
+p250
+five_seven
+dual_berettas
+tec9
+cz75a
+revolver
+p90
+mac10
+bizon
+ump45
+xm1014
+nova
+m249
+zeus
+negev
+sawedoff
 ```
 
 ## TODO List
