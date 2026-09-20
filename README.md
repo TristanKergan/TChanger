@@ -1,34 +1,116 @@
-# Hamzex
+# TChanger
 
-Linux only internal skin changer for **Counter-Strike 2**.
+[![C++26](https://img.shields.io/badge/C%2B%2B-26%20Modules-blue.svg)](https://en.cppreference.com/w/cpp/26)
+[![Qt](https://img.shields.io/badge/Qt-6.x%20Widgets-41cd52.svg)](https://www.qt.io/)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20x86__64-orange.svg)]()
+[![Build & Tests](https://img.shields.io/badge/Tests-11%2F11%20Passing-brightgreen.svg)]()
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
-> ⚠️ **Warning**: This software technically falls into the "cheat" category
-> and could result in a ban from the game; I take no responsibility for it.
+High-performance, internal skin, knife, and agent changer for **Counter-Strike 2** on Linux with a standalone native **Qt6 desktop configurator** and zero-latency **live IPC hot-reloading**.
 
-## Requirements
+> ⚠️ **Disclaimer**: This software is an internal modification tool. Use at your own risk. The authors accept no responsibility for any in-game sanctions or account restrictions.
 
-- **CMake** >= 4.4.2
-- **Ninja**
-- A C++26 compiler with module support (GCC >= 14)
-- **Linux kernel headers** matching your running kernel (to build the `hide_tracer` kernel module)
-- **gdb** (used by `inject.sh` to attach to the game and `dlopen` the library)
+---
 
-## Step-by-step guide
-### building
+## 🌟 Key Features
 
-```git clone https://github.com/TristanKergan/TChanger``` clone repo
+* **🖥️ Standalone Qt6 Desktop Configurator (`hamzex-configurator`)**:
+  * Native Qt6 Widgets interface with dark theme and responsive layout.
+  * Independent desktop app: configure skins **before** launching the game or live **during** gameplay.
+  * Search filter and category selector (Rifles, Pistols, Snipers, SMGs, Heavy).
+  * Knife customizer with independent CT / T models, one-click copy CT $\leftrightarrow$ T, and full Doppler finish presets (Ruby, Sapphire, Black Pearl, Phases).
+  * Agent selector covering all 46 official CT and T models.
+  * Dirty state indicator (`* [Unsaved Changes]`) and exit confirmation prompt.
+  * Bulk weapon reset button (`[ 🗑 Reset All Weapons ]`) with safety prompt.
+  * Real-time sync status badge (`● CS2 Runtime: Connected (vX) [hh:mm:ss]`).
 
-```cd hamzex``` enter repo
+* **⚡ Zero-Wait Lock-Free Hot-Reloading (`RuntimeConfig` & IPC)**:
+  * Unix Domain Socket IPC (`AF_UNIX`) communication between GUI and game runtime.
+  * RCU lock-free atomic snapshot architecture (`std::atomic<std::shared_ptr<const RuntimeConfigSnapshot>>`).
+  * **Zero mutex locks, zero memory allocations, zero filesystem I/O, zero socket calls** on the rendering thread hot path.
+  * Instant loadout switching without restarting rounds or the game.
 
-```./build_lkm.sh``` build kernel module for bypass TracerPid (optional)
+* **🛡️ Hardened Memory Safety & Frame-Rate Protection**:
+  * Unconfigured weapons cached on first frame, eliminating redundant hash lookups at 60–240+ FPS.
+  * Atomic configuration backup (`~/.config/hamzex/config.json.bak`) with automatic failure rollback.
+  * Length-safe IPC transport (`WriteAll`), symlink hijacking guards, and 64 KB packet capping.
+  * Log rotation at 2 MB (`hamzex.log` $\rightarrow$ `hamzex.log.1`) with configurable `HAMZEX_DEBUG=1`.
 
-```./build.sh``` build cheat
+---
 
-```sudo ./inject.sh``` inject cheat to cs2 (With TrackerPid bypass)
+## 📋 Requirements
 
-or
+* **OS**: Linux x86_64
+* **Compiler**: GCC >= 14 or Clang >= 18 (with C++26 modules support)
+* **Build System**: CMake >= 3.28 and Ninja
+* **Libraries**: Qt6 (Widgets, Core, Gui)
+  * **Debian / Ubuntu**: `sudo apt install cmake ninja-build g++ qt6-base-dev qt6-base-dev-tools`
+  * **Arch Linux / Manjaro**: `sudo pacman -S cmake ninja gcc qt6-base`
+  * **Fedora**: `sudo dnf install cmake ninja-build gcc-c++ qt6-qtbase-devel`
+* **Optional**: Linux kernel headers matching your running kernel (only if building the `hide_tracer` LKM)
+* **Optional**: `gdb` (used by `inject.sh` to attach and load `libHamzex.so`)
 
-```sudo ./inject-direct.sh``` inject without bypass (I didn't experience any problems.)
+---
+
+## 🚀 Quick Start Guide
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/TristanKergan/TChanger.git
+cd TChanger
+```
+
+### 2. Build Cheat & Configurator
+
+```bash
+./build.sh
+```
+
+*(Or build manually with CMake)*:
+```bash
+cmake -B build -G Ninja
+cmake --build build
+```
+
+Artifacts produced in `build/`:
+* `libHamzex.so` — CS2 internal injection library.
+* `hamzex-configurator` — Standalone Qt6 GUI configurator.
+* `libHamzexCommon.a` — Shared core library (ItemCatalog, JSON, Config).
+
+### 3. Usage Workflows
+
+#### Mode A: Pre-Game Configuration (Offline Mode)
+1. Run the configurator before starting CS2:
+   ```bash
+   ./build/hamzex-configurator
+   ```
+2. Customize your weapons, knives, agents, and skins.
+3. Click **«💾 Save to Disk»** (or press `Ctrl+S`).
+4. Settings are saved to `~/.config/hamzex/config.json`. CS2 will automatically load them on startup.
+
+#### Mode B: Live In-Game Hot-Reloading
+1. Start Counter-Strike 2.
+2. Inject the library:
+   ```bash
+   sudo ./inject.sh
+   # Or without LKM bypass:
+   sudo ./inject-direct.sh
+   ```
+3. Open `./build/hamzex-configurator` (status will show `● CS2 Runtime: Connected`).
+4. Change any skins, wear, seed, or knife model.
+5. Click **«⚡ Apply to Game»** (or `Ctrl+Enter`) for instant in-game updates.
+
+#### Mode C: CLI Mode
+```bash
+# Test connection to running CS2 runtime
+./build/hamzex-configurator --ping
+
+# Apply JSON config directly to running game
+./build/hamzex-configurator --apply my_config.json
+```
+
+---
 
 ### Configuration & Skin Customization
 
@@ -220,19 +302,33 @@ If you have an existing V1 `config.json` with `"settings"` and `"skins"` (`"both
 
 ---
 
-### Offline Test Suite
+### 🧪 Comprehensive Offline Test Suite
 
-Hamzex includes an automated standalone test suite verifying parsing, resolution, aliasing, and memory safety:
+TChanger includes an automated standalone test suite verifying parsing, resolution, aliasing, concurrency, and memory safety:
 
 ```bash
 ./tests/run_tests.sh
 ```
 
+All 11 test blocks run offline without requiring Counter-Strike 2:
+1. Low-level safety, `ResolveRipRel`, and `IsBadReadPtr`.
+2. Weapon alias canonicalization.
+3. `ItemCatalog` validation against `items_game.txt`.
+4. Wear preset bounds and string conversion.
+5. Paint kit collision detection and knife guard.
+6. JSON parser with single-line & multi-line comments.
+7. Modern V2 config parsing and resolution.
+8. Legacy V1 backward compatibility.
+9. Knife & weapon skin catalogs.
+10. `RuntimeConfig` concurrent multi-threaded RCU reads (80k+ iterations).
+11. Unix Domain Socket IPC handshake, validation, and hot-reload.
+
 ---
 
-## License
+## 📄 License
 
-> Copyright (c) 2026 Enes Hamza
+This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
 
-This project is licensed under the GPL 3.0 - see the [LICENSE](https://gitlab.com/eneshamza/hamzex/-/blob/main/LICENSE) file for details.
+Repository: [https://github.com/TristanKergan/TChanger](https://github.com/TristanKergan/TChanger)
+
 
