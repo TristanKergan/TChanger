@@ -16,7 +16,7 @@ Linux only internal skin changer for **Counter-Strike 2**.
 ## Step-by-step guide
 ### building
 
-```git clone (https://github.com/TristanKergan/TChanger)``` clone repo
+```git clone https://github.com/TristanKergan/TChanger``` clone repo
 
 ```cd hamzex``` enter repo
 
