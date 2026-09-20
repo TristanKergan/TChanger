@@ -1,7 +1,7 @@
 module;
-// POSIX + errno makroları GMF'te kalır: export module öncesinde include edilmelidir
+// POSIX + uio başlıkları GMF'te kalır: export module öncesinde include edilmelidir
 #include <cerrno>
-#include <fcntl.h>
+#include <sys/uio.h>
 #include <unistd.h>
 #include <cstdint>
 #include <cstring>
@@ -19,33 +19,61 @@ inline constexpr std::size_t EntityIdentityEntityOffset = 0;
 inline constexpr std::size_t EntityIdentityHandleOffset = 16;
 inline constexpr std::uint32_t HandleValidMask = 0x7FFFu;
 
-export std::uintptr_t ReadPointer(std::uintptr_t slot) {
-    return slot ? *reinterpret_cast<std::uintptr_t*>(slot) : 0;
+// Bogus pointer'ı crash'e yol açmadan güvenle kopyalar (process_vm_readv ile korunur).
+export bool SafeRead(std::uintptr_t addr, void* dst, std::size_t size) {
+    if (!addr || !dst || size == 0 || (UINTPTR_MAX - addr < size))
+        return false;
+    struct iovec local = { dst, size };
+    struct iovec remote = { reinterpret_cast<void*>(addr), size };
+    return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) == static_cast<ssize_t>(size);
 }
 
-// Geçersiz adresi pipe write trick ile güvenle tespit et (crash yerine EFAULT).
+export std::uintptr_t ReadPointer(std::uintptr_t slot) {
+    if (!slot)
+        return 0;
+    std::uintptr_t val = 0;
+    if (!SafeRead(slot, &val, sizeof(val)))
+        return 0;
+    return val;
+}
+
+// Geçersiz adresi process_vm_readv ile güvenle ve deterministik tespit et (crash yerine EFAULT).
 export bool IsBadReadPtr(const void* ptr, std::size_t size) {
-    if (!ptr)
+    if (!ptr || size == 0)
         return true;
-    static int rfd = -1;
-    static int wfd = -1;
-    if (wfd < 0) {
-        int filedes[2];
-        if (pipe(filedes) < 0)
-            return true;
-        rfd = filedes[0];
-        wfd = filedes[1];
-        fcntl(rfd, F_SETFL, O_NONBLOCK);
-        fcntl(wfd, F_SETFL, O_NONBLOCK);
+
+    const std::uintptr_t start = reinterpret_cast<std::uintptr_t>(ptr);
+    if (UINTPTR_MAX - start < size)
+        return true;
+
+    // Küçük boyutlar (<= 64 byte) için hızlı yol
+    if (size <= 64) {
+        char dummy[64];
+        struct iovec local = { dummy, size };
+        struct iovec remote = { const_cast<void*>(ptr), size };
+        return process_vm_readv(getpid(), &local, 1, &remote, 1, 0) != static_cast<ssize_t>(size);
     }
-    const ssize_t result = write(wfd, ptr, size);
-    if (result < 0) {
-        if (errno == EFAULT)
+
+    // Daha büyük bellek aralıkları için sayfa bazlı kontrol [ptr, ptr + size)
+    const std::uintptr_t end = start + size;
+    std::uintptr_t cur = start;
+    char byte = 0;
+    struct iovec local = { &byte, 1 };
+
+    while (cur < end) {
+        struct iovec remote = { reinterpret_cast<void*>(cur), 1 };
+        if (process_vm_readv(getpid(), &local, 1, &remote, 1, 0) != 1)
             return true;
-        if (errno == EAGAIN) {
-            char buf[4096];
-            while (read(rfd, buf, sizeof(buf)) > 0) {}
+        const std::uintptr_t nextPage = (cur & ~static_cast<std::uintptr_t>(0xFFF)) + 4096;
+        if (nextPage >= end) {
+            if (cur != end - 1) {
+                struct iovec lastRemote = { reinterpret_cast<void*>(end - 1), 1 };
+                if (process_vm_readv(getpid(), &local, 1, &lastRemote, 1, 0) != 1)
+                    return true;
+            }
+            break;
         }
+        cur = nextPage;
     }
     return false;
 }
@@ -76,21 +104,15 @@ export void* EntityFromHandle(std::uintptr_t system, std::int8_t entityListOffse
     return *reinterpret_cast<void* const*>(identity + EntityIdentityEntityOffset);
 }
 
-// x86_64 rip-relative: hedef = dispKonumu + 4 + disp32
-export std::uintptr_t ResolveRipRel(std::uintptr_t dispLoc) {
+// x86_64 rip-relative: hedef = dispKonumu + 4 + trailingBytes + disp32
+// trailingBytes: disp32 sonrasında gelen ek instruction baytları (örn. imm8 için 1).
+export std::uintptr_t ResolveRipRel(std::uintptr_t dispLoc, std::size_t trailingBytes = 0) {
     if (!dispLoc)
         return 0;
     std::int32_t disp = 0;
-    std::memcpy(&disp, reinterpret_cast<const void*>(dispLoc), sizeof(disp));
-    return dispLoc + 4 + static_cast<std::uintptr_t>(disp);
-}
-
-// Bogus pointer'ı crash'e yol açmadan güvenle kopyalar (IsBadReadPtr ile korunur).
-export bool SafeRead(std::uintptr_t addr, void* dst, std::size_t size) {
-    if (!addr || IsBadReadPtr(reinterpret_cast<const void*>(addr), size))
-        return false;
-    std::memcpy(dst, reinterpret_cast<const void*>(addr), size);
-    return true;
+    if (!SafeRead(dispLoc, &disp, sizeof(disp)))
+        return 0;
+    return dispLoc + 4 + trailingBytes + static_cast<std::uintptr_t>(disp);
 }
 
 export bool ReadI16(std::uintptr_t addr, std::int16_t* out) { return SafeRead(addr, out, sizeof(*out)); }
@@ -98,16 +120,21 @@ export bool ReadI32(std::uintptr_t addr, std::int32_t* out) { return SafeRead(ad
 export bool ReadPtr(std::uintptr_t addr, std::uintptr_t* out) { return SafeRead(addr, out, sizeof(*out)); }
 
 export bool ReadString(std::uintptr_t addr, char* dst, std::size_t cap) {
-    if (!addr || cap == 0)
+    if (!addr || !dst || cap == 0)
         return false;
+    dst[0] = '\0';
     char chunk[64];
     std::size_t filled = 0;
     for (;;) {
-        if (!SafeRead(addr + filled, chunk, sizeof(chunk)))
+        if (!SafeRead(addr + filled, chunk, sizeof(chunk))) {
+            dst[filled < cap ? filled : cap - 1] = '\0';
             return false;
+        }
         for (std::size_t i = 0; i < sizeof(chunk); ++i) {
-            if (filled + i + 1 >= cap)
+            if (filled + i + 1 >= cap) {
+                dst[cap - 1] = '\0';
                 return false;
+            }
             dst[filled + i] = chunk[i];
             if (chunk[i] == '\0')
                 return true;
@@ -116,15 +143,13 @@ export bool ReadString(std::uintptr_t addr, char* dst, std::size_t cap) {
     }
 }
 
-// Resolver'ın localPlayerController global'ı +1 RIP quirk'ine tabidir
-// (gerçek pointer base+1'de). İşaretçiyi okur, vtable'ın belirtilen modülde
-// olduğunu doğrular; geçersizse nullptr döner.
+// İşaretçiyi okur, vtable'ın belirtilen modülde olduğunu doğrular; geçersizse nullptr döner.
 export void* TryController(std::uintptr_t slot, std::string_view moduleName) {
     const auto p = ReadPointer(slot);
     if (!p || IsBadReadPtr(reinterpret_cast<const void*>(p), 8))
         return nullptr;
-    const auto vtbl = *reinterpret_cast<std::uintptr_t*>(p);
-    if (!IsAddressInModule(moduleName, vtbl))
+    const auto vtbl = ReadPointer(p);
+    if (!vtbl || !IsAddressInModule(moduleName, vtbl))
         return nullptr;
     return reinterpret_cast<void*>(p);
 }

@@ -66,11 +66,11 @@ export ClientOffsets& ResolveClientOffsets() {
         if (!m)
             log.error("ResolveClientOffsets: kSetModel NOT FOUND");
     }
-    // kLocalPlayerController (RipRelative) — +1 quirk AgentChanger tarafında denenir
+    // kLocalPlayerController (RipRelative) — 1 byte imm8 follows disp32
     {
         const Sig s{ "48 83 3D ? ? ? ? ? 0F 95 C0 C3", 3 };
         const auto m = PatternScan(ClientModule, s.bytes);
-        o.localPlayerController = m ? ResolveRipRel(m + s.offsetToAdd) : 0;
+        o.localPlayerController = m ? ResolveRipRel(m + s.offsetToAdd, 1) : 0;
         if (!m)
             log.error("ResolveClientOffsets: kLocalPlayerController NOT FOUND");
     }

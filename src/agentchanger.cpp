@@ -9,96 +9,23 @@ import Memory;
 import Resolver;
 import SchemaScan;
 import Config;
+import ItemCatalog;
 
 export module AgentChanger;
 
 // Minimal ajan değiştirici: FSN stage 7'de (FSN hook güvenli penceresi) sürülür.
 // Local player controller -> m_hPawn -> pawn zincirini yürür, takıma göre config'den
-// gelen ajan index'ini Agents[] tablosundan alır ve C_BaseModelEntity::SetModel
+// gelen ajan index'ini ItemCatalog tablosundan alır ve C_BaseModelEntity::SetModel
 // ile model yolunu uygular. Offset'ler dinamik çözülür (Resolver).
 
-// Ajan def index'leri artık config.json "settings" altından gelir
-// (agent_ct_index / agent_t_index -> Agents[] index).
-
-// Agent def index -> model yolu.
-struct AgentModel {
-    std::uint32_t def;
-    const char* modelPath;
-};
-
-const AgentModel Agents[] = {
-    {4619, "agents/models/ctm_st6/ctm_st6_variantj.vmdl"},
-    {4680, "agents/models/ctm_st6/ctm_st6_variantl.vmdl"},
-    {4711, "agents/models/ctm_swat/ctm_swat_variante.vmdl"},
-    {4712, "agents/models/ctm_swat/ctm_swat_variantf.vmdl"},
-    {4713, "agents/models/ctm_swat/ctm_swat_variantg.vmdl"},
-    {4714, "agents/models/ctm_swat/ctm_swat_varianth.vmdl"},
-    {4715, "agents/models/ctm_swat/ctm_swat_varianti.vmdl"},
-    {4716, "agents/models/ctm_swat/ctm_swat_variantj.vmdl"},
-    {4718, "agents/models/tm_balkan/tm_balkan_variantk.vmdl"},
-    {4726, "agents/models/tm_professional/tm_professional_varf.vmdl"},
-    {4727, "agents/models/tm_professional/tm_professional_varg.vmdl"},
-    {4728, "agents/models/tm_professional/tm_professional_varh.vmdl"},
-    {4730, "agents/models/tm_professional/tm_professional_varj.vmdl"},
-    {4732, "agents/models/tm_professional/tm_professional_vari.vmdl"},
-    {4733, "agents/models/tm_professional/tm_professional_varf1.vmdl"},
-    {4734, "agents/models/tm_professional/tm_professional_varf2.vmdl"},
-    {4735, "agents/models/tm_professional/tm_professional_varf3.vmdl"},
-    {4736, "agents/models/tm_professional/tm_professional_varf4.vmdl"},
-    {4613, "agents/models/tm_professional/tm_professional_varf5.vmdl"},
-    {4749, "agents/models/ctm_gendarmerie/ctm_gendarmerie_varianta.vmdl"},
-    {4750, "agents/models/ctm_gendarmerie/ctm_gendarmerie_variantb.vmdl"},
-    {4751, "agents/models/ctm_gendarmerie/ctm_gendarmerie_variantc.vmdl"},
-    {4752, "agents/models/ctm_gendarmerie/ctm_gendarmerie_variantd.vmdl"},
-    {4753, "agents/models/ctm_gendarmerie/ctm_gendarmerie_variante.vmdl"},
-    {4756, "agents/models/ctm_swat/ctm_swat_variantk.vmdl"},
-    {4757, "agents/models/ctm_diver/ctm_diver_varianta.vmdl"},
-    {4771, "agents/models/ctm_diver/ctm_diver_variantb.vmdl"},
-    {4772, "agents/models/ctm_diver/ctm_diver_variantc.vmdl"},
-    {4773, "agents/models/tm_jungle_raider/tm_jungle_raider_varianta.vmdl"},
-    {4774, "agents/models/tm_jungle_raider/tm_jungle_raider_variantb.vmdl"},
-    {4775, "agents/models/tm_jungle_raider/tm_jungle_raider_variantc.vmdl"},
-    {4776, "agents/models/tm_jungle_raider/tm_jungle_raider_variantd.vmdl"},
-    {4777, "agents/models/tm_jungle_raider/tm_jungle_raider_variante.vmdl"},
-    {4778, "agents/models/tm_jungle_raider/tm_jungle_raider_variantf.vmdl"},
-    {4780, "agents/models/tm_jungle_raider/tm_jungle_raider_variantb2.vmdl"},
-    {4781, "agents/models/tm_jungle_raider/tm_jungle_raider_variantf2.vmdl"},
-    {5105, "agents/models/tm_leet/tm_leet_variantg.vmdl"},
-    {5106, "agents/models/tm_leet/tm_leet_varianth.vmdl"},
-    {5107, "agents/models/tm_leet/tm_leet_varianti.vmdl"},
-    {5108, "agents/models/tm_leet/tm_leet_variantf.vmdl"},
-    {5109, "agents/models/tm_leet/tm_leet_variantj.vmdl"},
-    {5205, "agents/models/tm_phoenix/tm_phoenix_varianth.vmdl"},
-    {5206, "agents/models/tm_phoenix/tm_phoenix_variantf.vmdl"},
-    {5207, "agents/models/tm_phoenix/tm_phoenix_variantg.vmdl"},
-    {5208, "agents/models/tm_phoenix/tm_phoenix_varianti.vmdl"},
-    {5305, "agents/models/ctm_fbi/ctm_fbi_variantf.vmdl"},
-    {5306, "agents/models/ctm_fbi/ctm_fbi_variantg.vmdl"},
-    {5307, "agents/models/ctm_fbi/ctm_fbi_varianth.vmdl"},
-    {5308, "agents/models/ctm_fbi/ctm_fbi_variantb.vmdl"},
-    {5400, "agents/models/ctm_st6/ctm_st6_variantk.vmdl"},
-    {5401, "agents/models/ctm_st6/ctm_st6_variante.vmdl"},
-    {5402, "agents/models/ctm_st6/ctm_st6_variantg.vmdl"},
-    {5403, "agents/models/ctm_st6/ctm_st6_variantm.vmdl"},
-    {5404, "agents/models/ctm_st6/ctm_st6_varianti.vmdl"},
-    {5405, "agents/models/ctm_st6/ctm_st6_variantn.vmdl"},
-    {5500, "agents/models/tm_balkan/tm_balkan_variantf.vmdl"},
-    {5501, "agents/models/tm_balkan/tm_balkan_varianti.vmdl"},
-    {5502, "agents/models/tm_balkan/tm_balkan_variantg.vmdl"},
-    {5503, "agents/models/tm_balkan/tm_balkan_variantj.vmdl"},
-    {5504, "agents/models/tm_balkan/tm_balkan_varianth.vmdl"},
-    {5505, "agents/models/tm_balkan/tm_balkan_variantl.vmdl"},
-    {5601, "agents/models/ctm_sas/ctm_sas_variantf.vmdl"},
-    {5602, "agents/models/ctm_sas/ctm_sas_variantg.vmdl"},
-};
+namespace {
 
 const char* AgentModelForDef(std::uint32_t def) {
-    for (const auto& agent : Agents) {
-        if (agent.def == def)
-            return agent.modelPath;
-    }
-    return nullptr;
+    const auto* a = itemcatalog::FindAgentByDef(def);
+    return a ? a->modelPath : nullptr;
 }
+
+}  // namespace
 
 export class AgentChanger {
 public:
@@ -127,10 +54,7 @@ void AgentChanger::Run() {
         return;
     }
 
-    // Controller: rip-relative +1 quirk — önce canonical, değilse +1 dene.
     void* controller = TryController(o.localPlayerController, ClientModule);
-    if (!controller)
-        controller = TryController(o.localPlayerController + 1, ClientModule);
     if (!controller) {
         if (!dCtrl) { log.warn("agent: controller null/bad"); dCtrl = true; }
         return;

@@ -1,60 +1,65 @@
 {
-  "settings": {
-    "knife_ct_def": 507,
-    "knife_t_def": 508,
-    "agent_ct_def": 5601,
-    "agent_t_def": 5206
-  },
-  "skins": {
-    "both": {
-      "m4a1": { "paint_kit": 1017, "seed": 1, "wear": 0.000001 },
-      "sg556": { "paint_kit": 98, "seed": 1, "wear": 0.000001 },
-      "famas": { "paint_kit": 869, "seed": 1, "wear": 0.000001 },
-      "galilar": { "paint_kit": 76, "seed": 1, "wear": 0.000001 },
-      "scar20": { "paint_kit": 1470, "seed": 1, "wear": 0.000001 },
-      "g3sg1": { "paint_kit": 545, "seed": 1, "wear": 0.000001 },
-      "usp": { "paint_kit": 1065, "seed": 1, "wear": 0.000001 },
-      "glock": { "paint_kit": 38, "seed": 34, "wear": 0.000001 },
-      "p2000": { "paint_kit": 1181, "seed": 1, "wear": 0.000001 },
-      "five_seven": { "paint_kit": 831, "seed": 904, "wear": 0.000001 },
-      "dual_berettas": { "paint_kit": 710, "seed": 1, "wear": 0.000001 },
-      "tec9": { "paint_kit": 733, "seed": 1, "wear": 0.000001 },
-      "cz75a": { "paint_kit": 325, "seed": 1, "wear": 0.000001 },
-      "revolver": { "paint_kit": 523, "seed": 8, "wear": 0.000001 },
-      "mp9": { "paint_kit": 331, "seed": 1, "wear": 0.000001 },
-      "mp5sd": { "paint_kit": 872, "seed": 1, "wear": 0.000001 },
-      "p90": { "paint_kit": 726, "seed": 1, "wear": 0.000001 },
-      "mac10": { "paint_kit": 682, "seed": 1, "wear": 0.000001 },
-      "bizon": { "paint_kit": 376, "seed": 1, "wear": 0.000001 },
-      "ump45": { "paint_kit": 93, "seed": 1, "wear": 0.000001 },
-      "xm1014": { "paint_kit": 169, "seed": 1, "wear": 0.000001 },
-      "mag7": { "paint_kit": 171, "seed": 1, "wear": 0.000001 },
-      "nova": { "paint_kit": 101, "seed": 1, "wear": 0.000001 },
-      "m249": { "paint_kit": 75, "seed": 1, "wear": 0.000001 },
-      "ak47": { "paint_kit": 1171, "seed": 1, "wear": 0.000001 },
-      "m4a4": { "paint_kit": 1353, "seed": 1, "wear": 0.000001 },
-      "aug": { "paint_kit": 1033, "seed": 1, "wear": 0.000001 },
-      "sawedoff": { "paint_kit": 83, "seed": 1, "wear": 0.000001 }
-    },
-    "ct": {
-      "ssg08": { "paint_kit": 253, "seed": 1, "wear": 0.000001 },
-      "negev": { "paint_kit": 285, "seed": 1, "wear": 0.000001 },
-      "deagle": { "paint_kit": 185, "seed": 1, "wear": 0.000001 },
-      "awp": { "paint_kit": 1206, "seed": 1, "wear": 0.000001 },
-      "p250": { "paint_kit": 162, "seed": 1, "wear": 0.000001 },
-      "mp7": { "paint_kit": 1436, "seed": 8, "wear": 0.000001 },
-      "zeus": { "paint_kit": 292, "seed": 1, "wear": 0.000001 },
-      "knife": { "paint_kit": 417, "seed": 609, "wear": 0.000001 }
-    },
-    "t": {
-      "ssg08": { "paint_kit": 762, "seed": 1, "wear": 0.000001 },
-      "negev": { "paint_kit": 201, "seed": 1, "wear": 0.000001 },
-      "deagle": { "paint_kit": 37, "seed": 1, "wear": 0.000001 },
-      "awp": { "paint_kit": 1026, "seed": 1, "wear": 0.000001 },
-      "p250": { "paint_kit": 162, "seed": 1, "wear": 0.000001 },
-      "mp7": { "paint_kit": 1436, "seed": 8, "wear": 0.000001 },
-      "zeus": { "paint_kit": 1183, "seed": 1, "wear": 0.000001 },
-      "knife": { "paint_kit": 246, "seed": 1, "wear": 0.000001 }
-    }
-  }
+"config_version": 2,
+
+"knives": {
+"ct": {
+"model": "butterfly",
+"skin": "fade",
+"wear": "factory_new",
+"seed": 1
+},
+"t": {
+"model": "butterfly",
+"skin": "fade",
+"wear": "factory_new",
+"seed": 1
 }
+},
+
+"agents": {
+"ct": "sas",
+"t": "phoenix"
+},
+
+"weapons": {
+"deagle": {
+"skin": "printstream",
+"wear": "factory_new",
+"seed": 1
+},
+
+```
+"awp": {
+  "skin": "duality",
+  "wear": "factory_new",
+  "seed": 1
+},
+
+"usp-s": {
+  "skin": "printstream",
+  "wear": "factory_new",
+  "seed": 1
+},
+
+"m4a1-s": {
+  "skin": "printstream",
+  "wear": "factory_new",
+  "seed": 1
+},
+
+"ak47": {
+  "skin": "head_shot",
+  "wear": "factory_new",
+  "seed": 1
+},
+
+"ssg08": {
+  "skin": "dragonfire",
+  "wear": "factory_new",
+  "seed": 1
+}
+```
+
+}
+}
+

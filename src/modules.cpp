@@ -13,11 +13,13 @@ struct SearchContext {
 };
 
 const char* GetFilename(const char* path) {
+    if (!path)
+        return "";
     const char* filename = std::strrchr(path, '/');
     return filename ? filename + 1 : path;
 }
 
-int DlCallback(struct dl_phdr_info* info, size_t size, void* data) {
+int DlCallback(struct dl_phdr_info* info, [[maybe_unused]] size_t size, void* data) {
     auto* ctx = reinterpret_cast<SearchContext*>(data);
     const char* filename = GetFilename(info->dlpi_name);
     if (ctx->targetName == filename) {
@@ -45,7 +47,7 @@ struct SegmentContext {
     std::vector<ModuleSegment> readSegments;
 };
 
-int DlSegmentCallback(struct dl_phdr_info* info, size_t size, void* data) {
+int DlSegmentCallback(struct dl_phdr_info* info, [[maybe_unused]] size_t size, void* data) {
     auto* ctx = reinterpret_cast<SegmentContext*>(data);
     const char* filename = GetFilename(info->dlpi_name);
 

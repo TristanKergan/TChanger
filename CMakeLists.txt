@@ -23,6 +23,7 @@ target_sources(Hamzex
         src/resolver.cpp
         src/schemascan.cpp
         src/attributemanager.cpp
+        src/itemcatalog.cpp
         src/json.cpp
         src/config.cpp
         src/skinconfig.cpp

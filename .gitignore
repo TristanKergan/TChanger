@@ -1,0 +1,14 @@
+build/
+*.ko
+*.o
+*.mod
+*.mod.c
+*.order
+*.symvers
+.cache/
+compile_commands.json
+test_*/
+tests/bin/
+tests/test_standalone
+gcm.cache/
+.agents/

@@ -12,6 +12,7 @@ import Offsets;
 import Memory;
 import AgentChanger;
 import SkinChanger;
+import AttributeManager;
 
 export module FsnHook;
 
@@ -154,5 +155,6 @@ bool FsnHook::Uninstall() {
     if (g_fsnInstalled && g_fsnSlot && g_fsnOriginal)
         SafeWritePointer(g_fsnSlot, g_fsnOriginal);
     g_fsnInstalled = false;
+    ClearAllocations();
     return true;
 }

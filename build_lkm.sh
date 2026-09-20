@@ -24,12 +24,12 @@ prune_artifacts() {
 
 case "${1:-build}" in
   build)
-    make -C "$LKM_DIR"
+    make -C "$LKM_DIR" LLVM=1 KCFLAGS="-w"
     prune_artifacts
     [ -f "$LKM_DIR/$MODULE_NAME.ko" ] && echo "[+] Built: $LKM_DIR/$MODULE_NAME.ko"
     ;;
   clean)
-    make -C "$LKM_DIR" clean
+    make -C "$LKM_DIR" LLVM=1 KCFLAGS="-w" clean
     prune_artifacts
     echo "[+] Cleaned: $LKM_DIR"
     ;;

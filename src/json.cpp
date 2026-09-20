@@ -36,6 +36,9 @@ const Value* Find(const Value& v, const char* key);
 long GetLong(const Value& v, const char* key, long dflt);
 double GetDouble(const Value& v, const char* key, double dflt);
 bool GetBool(const Value& v, const char* key, bool dflt);
+std::string GetString(const Value& v, const char* key, const std::string& dflt = "");
+std::string GetStringOrNum(const Value& v, const char* key, const std::string& dflt = "");
+std::string AsString(const Value& v, const std::string& dflt = "");
 
 }  // namespace json
 
@@ -264,6 +267,28 @@ bool GetBool(const Value& v, const char* key, bool dflt) {
     if (!child || child->type != Type::Bool)
         return dflt;
     return child->b;
+}
+
+std::string GetString(const Value& v, const char* key, const std::string& dflt) {
+    const Value* child = v.Find(key);
+    if (!child || child->type != Type::String)
+        return dflt;
+    return child->str;
+}
+
+std::string GetStringOrNum(const Value& v, const char* key, const std::string& dflt) {
+    const Value* child = v.Find(key);
+    if (!child)
+        return dflt;
+    return AsString(*child, dflt);
+}
+
+std::string AsString(const Value& v, const std::string& dflt) {
+    if (v.type == Type::String)
+        return v.str;
+    if (v.type == Type::Number)
+        return v.num;
+    return dflt;
 }
 
 }  // namespace json

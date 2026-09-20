@@ -225,13 +225,26 @@ export SkinSchemaOffsets& ResolveSkin() {
     static SkinSchemaOffsets out;
     static bool done = false;
     static long calls = 0;
+    static int scanAttempts = 0;
+    static long nextAttemptCall = 0;
+
     if (done)
         return out;
-    // libschemasystem.so henüz yüklenmemişse erken çağrıda başarısız olur;
-    // sonsuza dek boş offset cache'lemeyelim: hazır olana kadar her ~60
-    // çağrıda bir yeniden tara (her frame taramayıp performansı korur).
-    if (!out.Ready() && (calls++ % 60) != 0)
-        return out;
+
+    if (!out.Ready()) {
+        if (calls < nextAttemptCall) {
+            calls++;
+            return out;
+        }
+        if (scanAttempts >= 5) {
+            calls++;
+            return out;
+        }
+        scanAttempts++;
+        // Backoff: 120, 240, 480, 960 frames
+        nextAttemptCall = calls + 120 * (1 << (scanAttempts - 1));
+        calls++;
+    }
     static Logger log;
     out = SkinSchemaOffsets{};
 
