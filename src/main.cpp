@@ -6,6 +6,8 @@ import Logger;
 import FsnHook;
 import Config;
 import SkinConfig;
+import RuntimeConfig;
+import IpcServer;
 
 static Logger Log;
 
@@ -30,8 +32,8 @@ void initializeWorker() {
     while (!g_stopRequested.load(std::memory_order_relaxed)) {
         if (FsnHook::Install()) {
             Log.info("Initialize: FSN hook installed successfully");
-            config::Global();
-            skinconfig::SkinTable::Global();
+            runtimeconfig::RuntimeConfig::Instance().LoadFromFile();
+            hamzex::server::IpcServer::Global().Start();
             g_lifecycle.store(LifecycleState::Ready, std::memory_order_release);
             return;
         }
@@ -74,6 +76,7 @@ void on_unload(void) {
         g_initThread.join();
     }
 
+    hamzex::server::IpcServer::Global().Stop();
     FsnHook::Uninstall();
     g_lifecycle.store(LifecycleState::Stopped, std::memory_order_release);
     Log.info("Hamzex Unloaded (STOPPED)");

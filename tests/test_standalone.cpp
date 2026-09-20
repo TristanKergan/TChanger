@@ -7,13 +7,24 @@
 #include <string>
 #include <string_view>
 #include <sys/uio.h>
+#include <sys/socket.h>
+#include <sys/un.h>
+#include <poll.h>
 #include <unistd.h>
+#include <memory>
+#include <thread>
+#include <vector>
+#include <atomic>
+
+#include "../src/ipc_protocol.hpp"
 
 import Logger;
 import Json;
 import ItemCatalog;
 import Config;
 import SkinConfig;
+import RuntimeConfig;
+import IpcServer;
 
 // Standalone verification for Hamzex:
 // 1. Low-level memory and instruction resolution safety
@@ -461,6 +472,230 @@ int main() {
         assert(knifeT.paint_kit == 38);
 
         std::cout << "  [PASS] Legacy V1 config parsed seamlessly without crash; knife defIndex mitigated" << std::endl;
+    }
+
+    // -----------------------------------------------------------------------
+    // PART 9: ItemCatalog weapon and knife skin resolution
+    // -----------------------------------------------------------------------
+    std::cout << "\n[9/11] Running ItemCatalog weapon and knife skin lookups..." << std::endl;
+    {
+        auto knifeSkins = itemcatalog::GetKnifeSkins();
+        assert(knifeSkins.size() >= 30);
+        bool foundDoppler = false;
+        bool foundFade = false;
+        bool foundCaseHardened = false;
+        for (const auto& s : knifeSkins) {
+            if (std::string_view(s.idName) == "doppler") {
+                assert(s.finishId == 415);
+                foundDoppler = true;
+            }
+            if (std::string_view(s.idName) == "fade") {
+                assert(s.finishId == 38);
+                foundFade = true;
+            }
+            if (std::string_view(s.idName) == "case_hardened") {
+                assert(s.finishId == 44);
+                foundCaseHardened = true;
+            }
+        }
+        assert(foundDoppler && foundFade && foundCaseHardened);
+
+        // Weapon-specific skin lookups
+        auto akSkins = itemcatalog::GetSkinsForWeapon("ak47");
+        assert(!akSkins.empty());
+        bool foundAkPrintstream = false;
+        bool foundAkAsiimov = false;
+        for (const auto& s : akSkins) {
+            if (std::string_view(s.idName) == "printstream") {
+                assert(s.finishId == 1242);
+                foundAkPrintstream = true;
+            }
+            if (std::string_view(s.idName) == "asiimov") {
+                assert(s.finishId == 801);
+                foundAkAsiimov = true;
+            }
+        }
+        assert(foundAkPrintstream && foundAkAsiimov);
+
+        auto m4a1sSkins = itemcatalog::GetSkinsForWeapon("m4a1_silencer");
+        bool foundM4Printstream = false;
+        for (const auto& s : m4a1sSkins) {
+            if (std::string_view(s.idName) == "printstream") {
+                assert(s.finishId == 984);
+                foundM4Printstream = true;
+            }
+        }
+        assert(foundM4Printstream);
+
+        auto deagleSkins = itemcatalog::GetSkinsForWeapon("deagle");
+        bool foundDeaglePrintstream = false;
+        for (const auto& s : deagleSkins) {
+            if (std::string_view(s.idName) == "printstream") {
+                assert(s.finishId == 962);
+                foundDeaglePrintstream = true;
+            }
+        }
+        assert(foundDeaglePrintstream);
+
+        std::cout << "  [PASS] ItemCatalog knife and weapon skin resolution verified" << std::endl;
+    }
+
+    // -----------------------------------------------------------------------
+    // PART 10: RuntimeConfig Lock-Free Concurrency & Snapshots
+    // -----------------------------------------------------------------------
+    std::cout << "\n[10/11] Running RuntimeConfig atomic concurrency & snapshot tests..." << std::endl;
+    {
+        auto& rcfg = runtimeconfig::RuntimeConfig::Instance();
+        auto initialSnap = rcfg.GetSnapshot();
+        assert(initialSnap != nullptr);
+
+        std::atomic<bool> stopReaders{false};
+        std::atomic<std::size_t> totalReads{0};
+        constexpr int kNumReaders = 4;
+        std::vector<std::thread> readers;
+
+        for (int i = 0; i < kNumReaders; ++i) {
+            readers.emplace_back([&]() {
+                std::uint64_t lastVer = 0;
+                while (!stopReaders.load(std::memory_order_relaxed)) {
+                    auto snap = rcfg.GetSnapshot();
+                    assert(snap != nullptr);
+                    assert(snap->version >= lastVer);
+                    lastVer = snap->version;
+                    totalReads.fetch_add(1, std::memory_order_relaxed);
+                }
+            });
+        }
+
+        // Writer thread simulates rapid config changes via JSON
+        for (int i = 0; i < 20; ++i) {
+            std::string jsonStr = "{\"config_version\":2,\"weapons\":{\"ak47\":{\"paint_kit\":" +
+                                  std::to_string(1000 + i) + ",\"wear\":0.01,\"seed\":" +
+                                  std::to_string(i + 1) + "}}}";
+            std::string err;
+            bool ok = rcfg.UpdateFromJson(jsonStr, err);
+            assert(ok);
+            usleep(500); // 500us
+        }
+
+        stopReaders.store(true, std::memory_order_release);
+        for (auto& t : readers) {
+            t.join();
+        }
+
+        auto finalSnap = rcfg.GetSnapshot();
+        assert(finalSnap != nullptr);
+        skinconfig::SkinEntry finalAk;
+        assert(finalSnap->skins.Get("ak47", 2, finalAk));
+        assert(finalAk.paint_kit == 1019);
+        assert(finalAk.seed == 20);
+
+        std::cout << "  [PASS] Concurrent lock-free snapshot reads (" << totalReads.load()
+                  << " reads across " << kNumReaders << " threads without tearing or deadlocks)" << std::endl;
+    }
+
+    // -----------------------------------------------------------------------
+    // PART 11: Local IPC Server Loopback & Live Hot-Reload Protocol
+    // -----------------------------------------------------------------------
+    std::cout << "\n[11/11] Running Local IPC server loopback & hot-reload protocol tests..." << std::endl;
+    {
+        auto& server = hamzex::server::IpcServer::Global();
+        assert(!server.IsRunning());
+        bool started = server.Start();
+        assert(started);
+        assert(server.IsRunning());
+
+        const std::string sPath = server.SocketPath();
+        assert(!sPath.empty());
+
+        auto sendIpc = [&](const std::string& req) -> std::string {
+            int fd = socket(AF_UNIX, SOCK_STREAM, 0);
+            assert(fd >= 0);
+            struct sockaddr_un addr{};
+            addr.sun_family = AF_UNIX;
+            std::strncpy(addr.sun_path, sPath.c_str(), sizeof(addr.sun_path) - 1);
+            int cret = connect(fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
+            assert(cret == 0);
+
+            std::string wire = req;
+            if (wire.empty() || wire.back() != '\n') wire.push_back('\n');
+            ssize_t wn = write(fd, wire.data(), wire.size());
+            assert(wn == static_cast<ssize_t>(wire.size()));
+
+            std::string resp;
+            char buf[2048];
+            while (true) {
+                struct pollfd pfd{};
+                pfd.fd = fd;
+                pfd.events = POLLIN;
+                int pret = poll(&pfd, 1, 500);
+                if (pret <= 0) break;
+                ssize_t rn = read(fd, buf, sizeof(buf));
+                if (rn <= 0) break;
+                resp.append(buf, static_cast<std::size_t>(rn));
+                if (resp.find('\n') != std::string::npos) break;
+            }
+            close(fd);
+            return resp;
+        };
+
+        // 1. Ping test
+        std::string pingResp = sendIpc("{\"cmd\":\"ping\"}");
+        assert(pingResp.find("\"status\":\"ok\"") != std::string::npos);
+        assert(pingResp.find("\"config_version\"") != std::string::npos);
+
+        // 2. Get config test
+        std::string getResp = sendIpc("{\"cmd\":\"get_config\"}");
+        assert(getResp.find("\"status\":\"ok\"") != std::string::npos);
+        assert(getResp.find("\"config\"") != std::string::npos);
+
+        // 3. Apply config test (Hot reload!)
+        const char* newCfg = R"({
+            "cmd": "apply_config",
+            "config": {
+                "config_version": 2,
+                "knives": {
+                    "ct": { "model": "karambit", "paint_kit": 415, "wear": 0.01, "seed": 1 }
+                },
+                "weapons": {
+                    "ak47": { "paint_kit": 1242, "wear": 0.01, "seed": 999 }
+                }
+            }
+        })";
+        std::string applyResp = sendIpc(newCfg);
+        assert(applyResp.find("\"status\":\"ok\"") != std::string::npos);
+
+        // Verify that RuntimeConfig was immediately updated live!
+        auto liveSnap = runtimeconfig::RuntimeConfig::Instance().GetSnapshot();
+        assert(liveSnap != nullptr);
+        assert(liveSnap->changer.ctKnifeDef == 507); // Karambit defIndex
+        skinconfig::SkinEntry akEntry;
+        assert(liveSnap->skins.Get("ak47", 2, akEntry));
+        assert(akEntry.paint_kit == 1242);
+        assert(akEntry.seed == 999);
+
+        // 4. Invalid config error handling
+        std::string errResp = sendIpc("{\"cmd\":\"apply_config\",\"config\":\"not_an_object\"}");
+        assert(errResp.find("\"status\":\"error\"") != std::string::npos);
+
+        // 5. Unknown command error handling
+        std::string unkResp = sendIpc("{\"cmd\":\"non_existent_command\"}");
+        assert(unkResp.find("\"status\":\"error\"") != std::string::npos);
+
+        // 6. Stop server & verify clean teardown
+        server.Stop();
+        assert(!server.IsRunning());
+
+        // Test connecting to stopped server should fail
+        int testFd = socket(AF_UNIX, SOCK_STREAM, 0);
+        struct sockaddr_un addr{};
+        addr.sun_family = AF_UNIX;
+        std::strncpy(addr.sun_path, sPath.c_str(), sizeof(addr.sun_path) - 1);
+        int cAfterStop = connect(testFd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr));
+        assert(cAfterStop != 0); // Must fail
+        close(testFd);
+
+        std::cout << "  [PASS] IPC server loopback verified (ping, get_config, apply_config hot reload, validation, clean stop)" << std::endl;
     }
 
     std::cout << "\n========================================================" << std::endl;

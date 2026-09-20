@@ -10,6 +10,7 @@ import Resolver;
 import SchemaScan;
 import Config;
 import ItemCatalog;
+import RuntimeConfig;
 
 export module AgentChanger;
 
@@ -94,8 +95,8 @@ void AgentChanger::Run() {
         reinterpret_cast<const std::uint8_t*>(pawn) + so.team_num_offset);
 
     // config'ten ajan def index'i (doğrudan ekonomi item def index'i).
-    const auto& cfg = config::Global();
-    if (!config::ConfigStore::Instance().isAgentEnabled()) {
+    auto snap = runtimeconfig::RuntimeConfig::Instance().GetSnapshot();
+    if (!snap || !snap->changer.agentEnabled) {
         if (!dTeam) { log.warn("agent: agentEnabled=false, skip"); dTeam = true; }
         return;
     }
@@ -112,7 +113,7 @@ void AgentChanger::Run() {
     }
 
     const bool isCT = (team == 3);
-    const std::uint32_t def = isCT ? cfg.ctAgentDef : cfg.tAgentDef;
+    const std::uint32_t def = isCT ? snap->changer.ctAgentDef : snap->changer.tAgentDef;
     const char* const model = AgentModelForDef(def);
     if (!model) {
         if (!dModel) {

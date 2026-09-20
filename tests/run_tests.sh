@@ -13,10 +13,12 @@ g++ -std=c++26 -fmodules-ts -O2 -c src/itemcatalog.cpp -o build/test_itemcatalog
 g++ -std=c++26 -fmodules-ts -O2 -c src/json.cpp -o build/test_json.o
 g++ -std=c++26 -fmodules-ts -O2 -c src/config.cpp -o build/test_config.o
 g++ -std=c++26 -fmodules-ts -O2 -c src/skinconfig.cpp -o build/test_skinconfig.o
+g++ -std=c++26 -fmodules-ts -O2 -c src/runtime_config.cpp -o build/test_runtime_config.o
+g++ -std=c++26 -fmodules-ts -O2 -c src/ipc_server.cpp -o build/test_ipc_server.o
 g++ -std=c++26 -fmodules-ts -O2 -c tests/test_standalone.cpp -o build/test_standalone.o
 
 echo "[*] Linking standalone test executable..."
-g++ build/test_standalone.o build/test_logger.o build/test_itemcatalog.o build/test_json.o build/test_config.o build/test_skinconfig.o -o tests/test_standalone
+g++ build/test_standalone.o build/test_logger.o build/test_itemcatalog.o build/test_json.o build/test_config.o build/test_skinconfig.o build/test_runtime_config.o build/test_ipc_server.o -lpthread -o tests/test_standalone
 
 echo "[*] Running standalone tests..."
 ./tests/test_standalone

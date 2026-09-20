@@ -14,16 +14,12 @@ import Offsets;
 import Config;
 import SkinConfig;
 import ItemCatalog;
+import RuntimeConfig;
 
 // Skin + knife changer. Called from the FSN hook:
 //   Run()        -> stage 6 (FRAME_NET_UPDATE_POSTDATAUPDATE_START): per-weapon skin
-//                   from config.json ("skins" tablosu, takım farkında) + default
-//                   bıçak model swap (config'ten seçilen bıçak). SetModel ertelenir.
-//   RunSetModels()-> stage 7 (FRAME_NET_UPDATE_POSTDATAUPDATE_END): ertelenen bıçak
-//                   SetModel'ını uygular (stage-6 SetModel ölüm teardown'ında crash).
-//
-// Econ field offset'leri SchemaScan modülünden, client pointer/fonksiyonları
-// Resolver'dan, ayarlar/skin tablosu Config/SkinConfig modüllerinden gelir.
+//                   from RuntimeConfig snapshot (team-aware) + knife model swap.
+//   RunSetModels()-> stage 7 (FRAME_NET_UPDATE_POSTDATAUPDATE_END): applied deferred SetModel.
 
 namespace {
 
@@ -31,8 +27,6 @@ constexpr std::uint32_t kDefaultKnifeDefIndex42 = 42;
 constexpr std::uint32_t kDefaultKnifeDefIndex59 = 59;
 constexpr std::uint32_t kAccountId = 0x1337BEEF;
 constexpr std::int32_t kQuality = 3;
-
-constexpr int kMaxWeapons = 64;
 
 // Weapon item definition index -> canonical name
 const char* weapon_name_from_index(int index) {
@@ -51,8 +45,16 @@ public:
     void RunSetModels(); // stage 7
 
 private:
+    struct AppliedWeaponState {
+        std::uint32_t handle = 0;
+        std::uint64_t configVersion = 0;
+        std::int64_t lastItemIdHigh = 0;
+    };
+    static constexpr int kMaxWeapons = 64;
+
     std::uint32_t pendingKnifeHandle_ = 0;
     const char* pendingSetModelPath_ = nullptr;
+    AppliedWeaponState appliedWeapons_[kMaxWeapons]{};
 };
 
 SkinChanger& SkinChanger::Global() {
@@ -173,8 +175,15 @@ void SkinChanger::Run() {
         return;
     }
 
-    const auto& cfg = config::Global();
-    const auto& skinTable = skinconfig::SkinTable::Global();
+    auto snap = runtimeconfig::RuntimeConfig::Instance().GetSnapshot();
+    if (!snap) {
+        pendingKnifeHandle_ = 0;
+        pendingSetModelPath_ = nullptr;
+        return;
+    }
+
+    const auto& cfg = snap->changer;
+    const auto& skinTable = snap->skins;
 
     for (int wi = 0; wi < validCount; ++wi) {
         auto* const weapon = reinterpret_cast<std::uint8_t*>(weaponEntities[wi]);
@@ -194,9 +203,8 @@ void SkinChanger::Run() {
         if (!wn)
             continue;
 
-        // Default knife (player's own): config'ten seçilen bıçağa model swap.
-        if (config::ConfigStore::Instance().isKnifeEnabled() &&
-            (defIndex == kDefaultKnifeDefIndex42 || defIndex == kDefaultKnifeDefIndex59)) {
+        // Knife model swap (supports live knife change across all knife definitions)
+        if (itemcatalog::IsKnifeDefIndex(defIndex)) {
             const std::uint32_t targetDef = (team == 3) ? cfg.ctKnifeDef : cfg.tKnifeDef;
             const auto* knife = itemcatalog::FindKnifeByDef(targetDef);
             if (knife && defIndex != knife->defIndex && o.updateSubClassValid &&
@@ -219,25 +227,34 @@ void SkinChanger::Run() {
             }
         }
 
-        if (!config::ConfigStore::Instance().isSkinEnabled())
-            continue;
-
         if (IsBadReadPtr(econView + so.item_id_high_offset, sizeof(std::int64_t)))
             continue;
 
         const auto itemIdHigh = *reinterpret_cast<const std::int64_t*>(
             econView + so.item_id_high_offset);
-        if (itemIdHigh == -1LL)
-            continue;  // fallback fields already applied this life
+
+        const std::uint32_t handle = handles[wi];
+        const std::size_t slot = static_cast<std::size_t>(handle % kMaxWeapons);
+        const bool isSameItem = (appliedWeapons_[slot].handle == handle) &&
+                                (appliedWeapons_[slot].configVersion == snap->version) &&
+                                (appliedWeapons_[slot].lastItemIdHigh == itemIdHigh);
+        if (isSameItem)
+            continue;  // Already processed for current item state & config version
 
         skinconfig::SkinEntry entry;
-        if (!skinTable.Get(wn, team, entry))
-            continue;  // bu silah config'te yok -> dokunma
+        if (!skinTable.Get(wn, team, entry)) {
+            // Weapon not configured: cache state so unconfigured weapons skip hash table
+            // queries on subsequent frames.
+            appliedWeapons_[slot].handle = handle;
+            appliedWeapons_[slot].configVersion = snap->version;
+            appliedWeapons_[slot].lastItemIdHigh = itemIdHigh;
+            continue;
+        }
 
-        // Capture the vtable of a game-owned attribute so injected entries reuse it.
+        // Capture attribute vtable
         AttributeManager::ObserveVTable(econView, so.attribute_list_offset, so.attributes_offset);
 
-        // Fallback fields make the econ layer render the configured skin.
+        // Fallback fields
         *reinterpret_cast<std::int32_t*>(weapon + so.fallback_paint_kit_offset) = entry.paint_kit;
         *reinterpret_cast<std::int32_t*>(weapon + so.fallback_seed_offset) = entry.seed;
         *reinterpret_cast<float*>(weapon + so.fallback_wear_offset) = entry.wear;
@@ -245,19 +262,24 @@ void SkinChanger::Run() {
             *reinterpret_cast<std::int32_t*>(weapon + so.fallback_stat_trak_offset) = -1;
         *reinterpret_cast<std::int64_t*>(econView + so.item_id_high_offset) = -1LL;
 
-        // Inject real CEconItemAttribute entries (paint/seed/wear) into the item
-        // view's attribute list so the paint kit resolves for knives too.
+        // Real CEconItemAttribute entries
         AttributeManager::Apply(econView, so.attribute_list_offset, so.attributes_offset,
                                 entry.paint_kit, entry.seed, entry.wear);
 
+        appliedWeapons_[slot].handle = handle;
+        appliedWeapons_[slot].configVersion = snap->version;
+        appliedWeapons_[slot].lastItemIdHigh = -1LL;
+
         char buf[160];
         std::snprintf(buf, sizeof(buf),
-                      "SkinChanger: applied paint=%d seed=%d wear=%.6f to weapon=%s def=%u",
+                      "SkinChanger: applied paint=%d seed=%d wear=%.6f to weapon=%s def=%u (v%zu)",
                       static_cast<int>(entry.paint_kit), static_cast<int>(entry.seed),
-                      static_cast<double>(entry.wear), wn, static_cast<unsigned>(defIndex));
+                      static_cast<double>(entry.wear), wn, static_cast<unsigned>(defIndex),
+                      static_cast<std::size_t>(snap->version));
         log.info(buf);
     }
 }
+
 
 void SkinChanger::RunSetModels() {
     if (!pendingKnifeHandle_ || !pendingSetModelPath_)

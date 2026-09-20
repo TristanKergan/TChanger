@@ -1,4 +1,6 @@
 build/
+CMakeFiles/
+CMakeCache.txt
 *.ko
 *.o
 *.mod

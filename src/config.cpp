@@ -21,6 +21,7 @@ struct ChangerConfig {
     std::uint32_t tKnifeDef = 0;       // knife def index (T)  -> Knives[] lookup
     std::uint32_t ctAgentDef = 5602;   // econ item def index (CT) -> Agents[] lookup
     std::uint32_t tAgentDef = 5602;    // econ item def index (T)  -> Agents[] lookup
+    bool agentEnabled = false;
     int version = 1;                   // 1 for legacy, 2 for modern
 };
 
@@ -205,6 +206,7 @@ config::ChangerConfig config::ParseConfig(const json::Value& root) {
     const json::Value* agents = root.Find("agents");
     if (agents) {
         c.version = 2;
+        c.agentEnabled = true;
         if (agents->type == json::Type::Object) {
             std::string ctAgent = json::GetStringOrNum(*agents, "ct");
             if (!ctAgent.empty()) {
@@ -222,6 +224,9 @@ config::ChangerConfig config::ParseConfig(const json::Value& root) {
     } else {
         const json::Value* settings = root.Find("settings");
         if (settings) {
+            if (settings->Find("agent_ct_def") || settings->Find("agent_t_def")) {
+                c.agentEnabled = true;
+            }
             c.ctAgentDef = static_cast<std::uint32_t>(json::GetLong(*settings, "agent_ct_def", c.ctAgentDef));
             c.tAgentDef  = static_cast<std::uint32_t>(json::GetLong(*settings, "agent_t_def", c.tAgentDef));
         }

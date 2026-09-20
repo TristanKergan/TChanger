@@ -5,6 +5,7 @@ module;
 #include <cstring>
 #include <string>
 #include <string_view>
+#include <vector>
 
 export module ItemCatalog;
 
@@ -62,6 +63,15 @@ struct PaintKitMapping {
     const char* name;
     std::int32_t id;
 };
+
+struct SkinOption {
+    const char* idName;
+    const char* displayName;
+    std::int32_t finishId;
+};
+
+std::vector<SkinOption> GetSkinsForWeapon(std::string_view weapon);
+std::vector<SkinOption> GetKnifeSkins();
 
 // 20 knives from CS2 Source 2
 inline constexpr KnifeModel Knives[] = {
@@ -458,9 +468,10 @@ std::int32_t ResolvePaintKit(std::string_view weapon, std::string_view skinOrId,
 
     // 2. Weapon-aware skins (different finish catalog IDs per weapon)
     if (s == "printstream") {
-        if (weapon == "deagle") return 962;
-        if (weapon == "m4a1") return 984;
-        if (weapon == "usp") return 1142;
+        if (weapon == "ak47") return 1242;
+        if (weapon == "deagle" || weapon == "desert_eagle") return 962;
+        if (weapon == "m4a1" || weapon == "m4a1_silencer" || weapon == "m4a1_s") return 984;
+        if (weapon == "usp" || weapon == "usp_silencer" || weapon == "usp_s") return 1142;
         return 984;
     }
     if (s == "asiimov") {
@@ -472,14 +483,14 @@ std::int32_t ResolvePaintKit(std::string_view weapon, std::string_view skinOrId,
         return 255;
     }
     if (s == "hyper_beast") {
-        if (weapon == "m4a1") return 430;
+        if (weapon == "m4a1" || weapon == "m4a1_silencer" || weapon == "m4a1_s") return 430;
         if (weapon == "awp") return 475;
         if (weapon == "nova") return 537;
         if (weapon == "five_seven") return 574;
         return 430;
     }
     if (s == "neo_noir") {
-        if (weapon == "usp") return 653;
+        if (weapon == "usp" || weapon == "usp_silencer" || weapon == "usp_s") return 653;
         if (weapon == "awp") return 803;
         if (weapon == "m4a4") return 988;
         if (weapon == "glock") return 1132;
@@ -530,6 +541,100 @@ std::int32_t ResolveSeed(std::string_view seedStr, std::int32_t dflt) {
         return static_cast<std::int32_t>(v);
     }
     return dflt;
+}
+
+std::vector<SkinOption> GetKnifeSkins() {
+    return {
+        {"vanilla", "Vanilla (Default)", 0},
+        {"fade", "Fade", 38},
+        {"doppler", "Doppler", 415},
+        {"doppler_ruby", "Doppler (Ruby)", 415},
+        {"doppler_sapphire", "Doppler (Sapphire)", 416},
+        {"doppler_black_pearl", "Doppler (Black Pearl)", 417},
+        {"doppler_phase1", "Doppler (Phase 1)", 418},
+        {"doppler_phase2", "Doppler (Phase 2)", 419},
+        {"doppler_phase3", "Doppler (Phase 3)", 420},
+        {"doppler_phase4", "Doppler (Phase 4)", 421},
+        {"gamma_emerald", "Gamma Doppler (Emerald)", 568},
+        {"gamma_phase1", "Gamma Doppler (Phase 1)", 569},
+        {"gamma_phase2", "Gamma Doppler (Phase 2)", 570},
+        {"gamma_phase3", "Gamma Doppler (Phase 3)", 571},
+        {"gamma_phase4", "Gamma Doppler (Phase 4)", 572},
+        {"case_hardened", "Case Hardened", 44},
+        {"tiger_tooth", "Tiger Tooth", 409},
+        {"marble_fade", "Marble Fade", 413},
+        {"slaughter", "Slaughter", 59},
+        {"crimson_web", "Crimson Web", 12},
+        {"lore", "Lore", 561},
+        {"autotronic", "Autotronic", 569},
+        {"black_laminate", "Black Laminate", 580},
+        {"freehand", "Freehand", 582},
+        {"blue_steel", "Blue Steel", 42},
+        {"stained", "Stained", 43},
+        {"urban_masked", "Urban Masked", 143},
+        {"forest_ddpat", "Forest DDPAT", 5},
+        {"boreal_forest", "Boreal Forest", 77},
+        {"night", "Night", 40},
+        {"safari_mesh", "Safari Mesh", 72},
+        {"scorched", "Scorched", 175},
+        {"rust_coat", "Rust Coat", 414}
+    };
+}
+
+std::vector<SkinOption> GetSkinsForWeapon(std::string_view rawWeapon) {
+    const char* canon = CanonicalWeaponName(rawWeapon);
+    const std::string_view w = canon ? canon : rawWeapon;
+    if (w == "knife") {
+        return GetKnifeSkins();
+    }
+
+    struct BaseSkin {
+        const char* id;
+        const char* name;
+        std::int32_t defaultId;
+    };
+
+    static constexpr BaseSkin kPopularGuns[] = {
+        {"printstream", "Printstream", 984},
+        {"head_shot", "Head Shot", 1171},
+        {"asiimov", "Asiimov", 255},
+        {"redline", "Redline", 282},
+        {"vulcan", "Vulcan", 302},
+        {"slate", "Slate", 1035},
+        {"fire_serpent", "Fire Serpent", 180},
+        {"the_empress", "The Empress", 675},
+        {"bloodsport", "Bloodsport", 597},
+        {"hyper_beast", "Hyper Beast", 430},
+        {"dragon_lore", "Dragon Lore", 344},
+        {"chrome_cannon", "Chrome Cannon", 1206},
+        {"duality", "Duality", 1222},
+        {"dragonfire", "Dragonfire", 624},
+        {"vogue", "Vogue", 963},
+        {"medusa", "Medusa", 448},
+        {"containment_breach", "Containment Breach", 845},
+        {"neo_noir", "Neo-Noir", 653},
+        {"kill_confirmed", "Kill Confirmed", 504},
+        {"water_elemental", "Water Elemental", 353},
+        {"blaze", "Blaze", 37},
+        {"code_red", "Code Red", 757},
+        {"howl", "Howl", 309},
+        {"temukau", "Temukau", 1175},
+        {"mecha_industries", "Mecha Industries", 556},
+        {"golden_coil", "Golden Coil", 497},
+        {"player_two", "Player Two", 946},
+        {"black_lotus", "Black Lotus", 10041},
+        {"olympus", "Olympus", 10043},
+        {"fade", "Fade", 38},
+        {"case_hardened", "Case Hardened", 44}
+    };
+
+    std::vector<SkinOption> list;
+    list.reserve(sizeof(kPopularGuns) / sizeof(kPopularGuns[0]));
+    for (const auto& b : kPopularGuns) {
+        std::int32_t resolved = ResolvePaintKit(w, b.id, b.defaultId);
+        list.push_back(SkinOption{b.id, b.name, resolved});
+    }
+    return list;
 }
 
 }  // namespace itemcatalog

@@ -54,13 +54,39 @@ std::string GetLogFilePath() {
 
 }  // namespace
 
+export enum class LogLevel : int {
+    Debug = 0,
+    Info = 1,
+    Warn = 2,
+    Error = 3
+};
+
 export class Logger {
 public:
-    void info(const std::string& message)  { write("[INFO] ", message); }
-    void warn(const std::string& message)  { write("[WARN] ", message); }
-    void error(const std::string& message) { write("[ERROR]", message); }
+    static void SetLogLevel(LogLevel level) noexcept { s_minLevel = level; }
+    static LogLevel GetLogLevel() noexcept { return s_minLevel; }
+
+    void debug(const std::string& message) {
+        if (s_minLevel <= LogLevel::Debug) write("[DEBUG]", message);
+    }
+    void info(const std::string& message) {
+        if (s_minLevel <= LogLevel::Info) write("[INFO] ", message);
+    }
+    void warn(const std::string& message) {
+        if (s_minLevel <= LogLevel::Warn) write("[WARN] ", message);
+    }
+    void error(const std::string& message) {
+        if (s_minLevel <= LogLevel::Error) write("[ERROR]", message);
+    }
 
 private:
+    static inline LogLevel s_minLevel = [] {
+        const char* env = std::getenv("HAMZEX_DEBUG");
+        if (env && (*env == '1' || *env == 'y' || *env == 'Y'))
+            return LogLevel::Debug;
+        return LogLevel::Info;
+    }();
+
     void write(const char* level, const std::string& message) {
         static std::mutex mtx;
         static std::ofstream file = [] {
@@ -76,6 +102,19 @@ private:
         std::strftime(tb, sizeof(tb), "%Y-%m-%d %H:%M:%S", &tm_buf);
 
         std::lock_guard<std::mutex> lk(mtx);
+        if (file.is_open()) {
+            // Check for 2MB log rotation
+            file.seekp(0, std::ios::end);
+            if (file.tellp() > 2 * 1024 * 1024) {
+                file.close();
+                const std::string path = GetLogFilePath();
+                const std::string rotPath = path + ".1";
+                unlink(rotPath.c_str());
+                (void)std::rename(path.c_str(), rotPath.c_str());
+                file.open(path, std::ios::out | std::ios::trunc);
+            }
+        }
+
         if (file.is_open()) {
             file << tb << " " << level << " " << message << "\n";
             // Flush only on errors to avoid blocking the hot path
